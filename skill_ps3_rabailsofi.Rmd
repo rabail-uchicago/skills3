@@ -1,0 +1,485 @@
+---
+title: "skills_pset3"
+author: "Rabail Sofi"
+date: "2023-04-10"
+output: pdf_document
+
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+rm(list=ls())
+library(tinytex)
+library(tidyverse)
+library(devtools)
+library(palmerpenguins)
+library(ggthemes)
+library(rmarkdown)
+library(knitr) 
+library(dplyr)
+library(DescTools) 
+library(binsreg)
+knitr::opts_chunk$set(error = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Front matter
+
+This submission is my work alone and complies with the 30535 integrity policy.
+
+Add your initials to indicate your agreement: \<\<\ RS \>\>
+
+Add your collaborators: \<\<\_\_\>\>
+
+Late coins used this pset: 0. Late coins left: 4. <!--You may use one for a given assignment.-->
+
+# R for Data Science Exercises
+
+
+## First Steps
+
+## Flight Data: Part 1
+
+## Download BTS Data 
+
+## Tidy Data
+
+1.a)
+```{r}
+# set up to create table3 from the lecture slides 
+table1 <- table1
+table2 <- table1 |> 
+  pivot_longer(cases:population, names_to = "type", values_to = "count")
+table3 <- table2 |> 
+  pivot_wider(names_from = year, values_from = count)
+
+
+table3 
+
+table3_rate <- table3 |>
+  pivot_longer(cols = `1999`:`2000`, 
+               names_to = "year", 
+               values_to = "number")
+table3_rate
+```
+
+1.b.)
+```{r}
+table3_rate_ <- table3_rate |>
+    pivot_wider(
+    names_from = "type", 
+    values_from = "number")
+table3_rate_
+```
+
+1.c.)
+```{r}
+table3_cases_and_rates <- table3_rate_ |>
+  mutate(rate = cases / population * 10000)
+table3_cases_and_rates
+```
+
+1.d.)
+```{r}
+table3_converted_back <- table3_cases_and_rates |>
+  pivot_longer(cols = cases:rate, names_to = "type", values_to = "count") |>
+  pivot_wider(names_from= year, values_from = count)
+table3_converted_back
+
+```
+
+1.2) 
+
+```{r eval = FALSE, cache = TRUE}
+knitr::include_graphics("image")
+library(reprex)
+reprex(table4a %>% pivot_longer(1999:2000, names_to = "year", values_to = "cases"))
+
+```
+
+1.3) The error is saying that the function "%>%" is not found. 
+
+1.4) The following tibble does not work with the pivot_wider() function because the name "Phillip Woods" is assigned to multiple different "age" and "height" variables and this confusion is causing errors. 
+
+```{r eval = FALSE, cache = TRUE}
+
+
+people <- tibble(
+~name, ~key, ~value, 
+#-----------------|--------|------
+"Phillip Woods", "age",       45,
+"Phillip Woods", "height",   186,
+"Phillip Woods","age",       50,
+"Phillip Woods", "height",   185,
+"Jessica Cordero", "age",       37,
+"Jessica Cordero", "height",   156,)
+
+people
+
+people |>
+  pivot_wider(names_from = "key", values_from = "value")
+
+
+```
+## Tidying case study
+
+2.1) NA refers to missing data, while 0 refers to the data that is equal to 0 in numeric form. 
+
+2.2) Without using the mutate function to replace the characters “newrel” with “new_rel”, we wouldn't be able to clean up our data correctly. As the chapter suggests, we must replace the characters “newrel” with “new_rel” to keep all the names consistent as seen in the data set "who2". 
+
+2.3) a) 
+```{r error=FALSE}
+tidyr::who
+
+who1 <- who %>% 
+  pivot_longer(
+    cols = new_sp_m014:newrel_f65, 
+    names_to = "key", 
+    values_to = "cases", 
+    values_drop_na = TRUE
+  )
+who1 
+
+who2 <- who1 %>% 
+  mutate(key = stringr::str_replace(key, "newrel", "new_rel"))
+who2
+
+who3 <- who2 %>% 
+  separate(key, c("new", "type", "sexage"), sep = "_")
+who3
+
+who3 %>% 
+  count(new)
+
+who4 <- who3 %>% 
+  select(-new, -iso2, -iso3)
+
+who5 <- who4 %>% 
+  separate(sexage, c("sex", "age"), sep = 1)
+who5
+
+who %>%
+  pivot_longer(
+    cols = new_sp_m014:newrel_f65, 
+    names_to = "key", 
+    values_to = "cases", 
+    values_drop_na = TRUE
+  ) %>% 
+  mutate(
+    key = stringr::str_replace(key, "newrel", "new_rel")
+  ) %>%
+  separate(key, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1)
+
+  
+who5_1 <- who5 |>
+  group_by(country, year, sex) |>
+  summarize(total = sum(cases)) 
+who5_1
+
+
+```
+
+2.3) Using raw data is probably not going to provide clear evidence because we need to identify patterns and trends in data in order to make interpretations. Moreover, large amounts of raw data can be affected by outliers so its important to summarize the data effectively through visualization and analysis. 
+
+2.3) c) 
+```{r}
+who5_2 <- who5_1 |>
+  pivot_wider(names_from = sex, values_from = total) |>
+  mutate(male_and_female = f + m) |>
+  mutate(female_ratio = f/male_and_female) |>
+  mutate(male_ratio = m/male_and_female)   
+who5_2
+  
+
+who5_2 <- who5_1 |>
+    pivot_wider(names_from = sex, values_from = total) |>
+  mutate(male_female_ratio = m/f)
+who5_2
+
+
+
+```
+
+2.3) d) It is a bad idea to ignore "country" when computing ratios because the men to women ratios can differ greately in countries across years that have severe gender inequality, lack of access to medical facilities for either gender, or other health concerns that effect one gender disproportionately. Hence, including the years and countries for these ratios help paint a better picture of TB cases and how they effect the respective populations based on what part of the world they live in. 
+
+
+2.3) e)
+```{r}
+who5_2 |>
+  mutate(post97 = if_else(year < 1998, NA, 1)) |>
+  ggplot(aes(x = year, y = male_female_ratio, color = post97)) + 
+  geom_point() + geom_smooth(method = "lm") + 
+  labs(title = "Tuberculosis in Men & Women From 1997 Onward",
+       x = "Year", y = "Male to Female Ratio of TB Cases",
+        color = "Cases Post 1997")
+
+```
+
+2.3) f) I learned that it is crucial to include concise and specific aesthetics for summarizing raw data to avoid confusion. Adding arguments to address the Q speficially (such as creating a variable just for cases post 1997) is important because those specific additions will help explain the plot more effectively. Although adding the variable "country" was not needed, I struggled with added countries to the plot because there were many countries in the data frame and it was difficult for me to organize them without making the plot unreadable. 
+
+The title for this would be: Men see a significant increase in TB cases as compared to women post 1997. 
+
+Sub points: After the year 1997, the cases of TB increased significantly for men. By filtering analyzing the data, one can infer that men in lower income countries were more impacted by TB than women. The reason could be that men are more exposed to TB-causing agents than women in those countries or that men are disadvantaged from seeking medical help for TB. 
+
+Citation: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5012571/  &  https://jrnold.github.io/r4ds-exercise-solutions/factors.html 
+
+
+## EDA (Exploring variation, including NAs)
+
+3.1)  X's distribution is between -0.25 and 10.8 and the variable surpasses a count of about 3,000.
+
+Y's distribution ranges between -0.25 and 59.2 with majority of the distribution being between 3.5 and 7.5. The total count for this variable surpasses 3,000 as well.  
+
+Z's distribution ranges between -0.25 and 32, with most of the distribution being between 2.25 and 5.7. The total count for this variable surpasses 6,000.
+```{r, fig.height = 3}
+ggplot(diamonds, aes(x = x)) +
+  geom_histogram(binwidth = 0.1)
+diamonds |>
+  count(cut_width(x, 0.5))
+
+ggplot(diamonds, aes(x = y)) +
+  geom_histogram(binwidth = 0.1)
+diamonds |>
+  count(cut_width(y, 0.5))
+
+ggplot(diamonds, aes(x = z)) +
+  geom_histogram(binwidth = 0.1)
+diamonds |>
+  count(cut_width(z, 0.5))
+```
+3.2) As we try various different bin_widths, we can see that the default bin-width of 0.5, the price looks like it gradually decreases as count increases. However, once we increase the bin-width, we squint less and we can get better insight into the distribution of price in the data set and see that there is a dip before focal numbers and bulge after focal numbers. Since price is a continuous variable, adjusting bin-width allows us to get more clarity on the correlation between diamond size and price. As discussed in lecture, the different ranges in bin-width raises insight into marketing (people will buy more at a certain point of sale, consumer preferences, etc.) about a pattern of people buying more diamonds right on the cusp. 
+```{r, fig.height = 3}
+diamonds <- diamonds 
+
+ggplot(diamonds) +
+  geom_histogram(aes(x = price), binwidth = 0.5)
+diamonds |>
+  count(cut_width(price, 0.5))
+mean(diamonds$price)
+
+diamonds_small <-
+  diamonds |>
+  filter(price < 10000) 
+
+ggplot(diamonds_small) +
+  geom_histogram(aes(x = price), binwidth = 10)
+
+ggplot(diamonds_small, aes(x = carat)) +
+  geom_histogram(binwidth = 0.01)
+
+ggplot(diamonds) +
+  geom_histogram(aes(x = price), binwidth = 50)
+
+ggplot(diamonds_small) +
+  geom_histogram(aes(x = price), binwidth = 50)
+
+```
+
+3.3) 
+- In a bar chart of a factor variable, missing values are usually treated as a separate category and are shown as an additional bar on the plot, often labeled as "NA". This can be seen in the plot below where there is a new bar titled "NA" for the penguin data frame. 
+
+- In a bar chart of a numeric variable, missing values are typically excluded from the plot entirely, and only the non-missing values are displayed. This can be seen in the plot below where the missing values are entirely excluded for the numeric variable chart. 
+
+- The difference in missing values between factor and numeric variables is due to the nature of the variables. Factors represent discrete categories, and missing values are treated as a distinct category. In contrast, numeric variables represent continuous values, and missing values do not have a meaningful value to display in a chart and this is the default behavior in R. 
+
+Source: help from chatGPT
+```{r, fig.height = 5}
+who <- who
+
+### Missing values in a bar chart of a numeric variable: 
+ggplot(who, aes(new_sp_m014))+
+  geom_bar(binwidth = 200) 
+
+### Missing values in a bar chart of a factor variable: 
+penguins <- penguins
+ggplot(penguins, aes(sex))+
+  geom_bar(binwidth = 200) 
+
+
+```
+
+## EDA: Compare two distributions
+
+4.1) In R, the scale() function is used to standardize or normalize data. Standardization involves transforming the data so that it has a mean of 0 and a standard deviation of 1, while normalization involves scaling the data to a specified range, such as between 0 and 1.
+
+In the first graph, with the facet_wrap (~cancelled) we can use it to assess the total count of flights that were actually cancelled. In the second graph with the facet_wrap(~cancelled, scales = "free_y"), we can use that to assess what what going on at different times for flights that were cancelled as well as flights that did make it. 
+```{r, fig.height = 5}
+
+library(ggplot2)
+nycflights13::flights |> 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + (sched_min / 60)
+  ) |> 
+  ggplot(aes(x = sched_dep_time)) + 
+  geom_freqpoly(aes(color = cancelled), binwidth = 1/4) +
+  facet_wrap (~cancelled) 
+
+
+
+nycflights13::flights |> 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + (sched_min / 60)
+  ) |> 
+  ggplot(aes(x = sched_dep_time)) + 
+  geom_freqpoly(aes(color = cancelled), binwidth = 1/4) +
+  facet_wrap(~cancelled, scales = "free_y")
+
+
+
+```
+
+4.2)
+```{r, fig.height = 5}
+nycflights13::flights |> 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + (sched_min / 60)
+  ) |> 
+  ggplot(aes(x = sched_dep_time, y = after_stat(density))) + 
+  geom_freqpoly(aes(color = cancelled))
+
+```
+
+4.3) Geom_freqpoly: this is best for a quick look up. Given the scheduled departure time, you can easily tell which origin is best. The colors make the plot easy to read as well! The downside is that the lines in the plot overlap and we don't have much insight into distribution and how the categorical variables affect each other. 
+
+Geom_violin: provides a visual distribution of each variable and shows the density of the data well, but the plot layout is a bit odd looking and might confuse an ordinary person who is not familiar with R's geom_violin plots. 
+
+Geom_histogram: Can visualize the distribution of a single variable, making it a useful tool for exploring the shape of the data. It allows for the specification of bins, making it possible to control the level of detail in the histogram. The downside here is that it can be sensitive to the choice of bin size and bin width and it is difficult to compare the data across bin-widths. 
+
+
+```{r, fig.height = 5}
+nycflights13::flights |> 
+  ggplot(aes(x = origin, y = arr_delay)) +
+  geom_violin()
+
+nycflights13::flights |> 
+ggplot(mapping = aes(x = arr_delay)) +
+  geom_histogram() + facet_wrap(~origin)
+
+nycflights13::flights |> 
+  ggplot(aes(sched_dep_time)) +
+  geom_freqpoly(aes(colour = origin), binwidth = 1)
+
+```
+
+4.4) The distribution among small diamonds has much more range is very vast. On the other hand, the distribution among large diamonds is much smaller. There is a significant cut off at 2.1 carats. I found this understandable because of consumer behavior and buying patterns; most people will invest in smaller diamonds with smaller carats as opposed to larger diamonds with larger carrots. To accommodate for this pattern, diamond producing companies see benefit in adding more range to diamonds with fewer carats since they are MUCH more common. 
+```{r}
+ggplot(diamonds, aes(x = carat)) +
+  geom_histogram(binwidth = 0.01)
+```
+
+
+## EDA: Covariation
+
+5.1) Despite spending lots of time adjusting height and width, this graph is hard to read because of the number of variables on the X axis. Because there are so many destinations in the data frame, it is not easy to compute all the destinations in one plot. I would suggest grouping the destinations into regions to make the graph easier to read and comprehend. 
+```{r}
+flights |>
+  group_by(month, dest) |>
+  mutate(total_ave_delay = mean(arr_delay + dep_delay, na.rm=TRUE)) |>
+  ggplot(aes(x=month, y=dest)) +
+  geom_tile(aes(fill = total_ave_delay)) +
+  scale_x_continuous(breaks = 1:12) +
+  labs(x= "Month", y = "Destination")
+  
+```
+
+5.2) Cut_width() divides the range of the data into equally spaced  (bins) of a set width, regardless of how many observations fall into each bin. This is helpful to keep the data even based on widths, but it won't be helpful when we want to analyze patterns. On the other hand, cut_number() divides the data into a specified number of bins of (approximately) equal size, based on the number of observations which is helpful if we want to visualize the size in groups, but will not be as even as the cut_width() function.
+
+In summary, cut_width() creates bins of a fixed width, while cut_number() creates bins with roughly the same number of observations in each bin.
+
+Citation: help from chat GPT. 
+```{r}
+diamonds <- diamonds 
+
+ggplot(diamonds, aes(x = carat, y = price, group = cut_number(carat, 20))) + geom_boxplot()
+
+ggplot(diamonds, aes(x = carat, y = price, group = cut_width(carat, 1))) + geom_boxplot()
+
+```
+5.3) 
+
+a.) In this data set, the variable "carat" is most important for predicting the price of a diamond. When I plotted price against the other variables, I did not notice much of a correlation with price as much as I did when I plotted price against the variable "carat". As suggested in the book, I put carats in bins due to the large amount of data points in the dataframe. 
+
+```{r}
+ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)))
+  
+```
+
+
+b.) By running the lm() function, we know that the correlation between cut and carat is slightly negative. Diamonds with higher carat weight have lower cut ratings, hence, the two variables are negatively correlated. 
+
+```{r}
+
+ggplot(diamonds, aes(x= price, y=carat)) +
+  geom_point(aes(color = cut), binwidth = 1000)
+
+```
+c.) Larger cut diamonds can be slowed for higher prices with a lower cut quality while smaller diamonds can be sold with a higher cut quality. The table in Question 5.3 is the complete opposite of that. It is misleading because it gives off the impression that price is dictated by cut, while its actually dictated by carat. As seen in the plot in 5.3 (b), different cut types exist across the board so cut type doesn't necessarily give accurate estimates of the price. 
+
+
+5.4.)
+
+a.)In the output below, we can see which cut is most common in every color category. 
+Color G --> ideal cut
+Color E --> ideal cut
+Color F --> ideal cut
+Color H --> ideal cut
+Color D --> ideal cut 
+Color I --> ideal cut
+```{r}
+
+diamonds |>
+  count(color, cut)
+
+```
+
+5.4.b.) In the table below, the "prop" column shows distribution of color within cut.
+```{r}
+diamonds |>
+  count(color, cut) |>
+  group_by(cut) |>
+  mutate(prop = n / sum(n)) 
+
+```
+5.4.c.) 
+```{r}
+diamonds |>
+  count(color, cut) |>
+  group_by(cut) |>
+  mutate(prop = n / sum(n)) |>
+  ggplot(mapping = aes(x = color, y = prop)) +
+  geom_point() + facet_wrap(~cut) 
+
+```
+
+
+5.5) 
+```{r}
+diamonds |>
+  count(color, cut) |>
+  group_by(cut) |>
+  mutate(prop = n / sum(n)) |>
+  ggplot(mapping = aes(x = color, y = cut)) +
+  geom_tile(mapping = aes(fill = prop))
+```
+
+
+
+
